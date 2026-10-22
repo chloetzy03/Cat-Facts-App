@@ -7,6 +7,12 @@
 
 import UIKit
 
+struct CatFact: Codable {
+    var fact: String
+    var length: Int
+}
+
+
 class ViewController: UIViewController {
 
     let button = UIButton(type: .system) //the "get fact" button
@@ -38,6 +44,9 @@ class ViewController: UIViewController {
         var config = UIButton.Configuration.filled()
         config.title = "Get Cat Fact"
         button.configuration = config
+        button.addAction(UIAction { [weak self] _ in
+            self?.getFactTapped()
+        }, for: .touchUpInside)
         
         // spinner
         spinner.hidesWhenStopped = true      //invisible whenever it isn't spinning
@@ -57,6 +66,32 @@ class ViewController: UIViewController {
             catImageView.heightAnchor.constraint(equalToConstant: 300)
         ])
     }
+    
+    
+    //api networking
+    func fetchCatFact() async throws -> CatFact{
+        
+        let apiURL = URL(string: "https://catfact.ninja/fact")!
+        let (data, _) = try await URLSession.shared.data(from: apiURL)
+        let catFact = try JSONDecoder().decode(CatFact.self, from: data)
+        return catFact
+        
+    }
+    
+    //when button is tapped
+    func getFactTapped(){
+        Task {
+            // "do/catch" = try this; if anything throws an error, jump to "catch".
+            do {
+                let catFact = try await fetchCatFact()   // wait for the fact
+                factLabel.text = catFact.fact            // show it on screen
+            } catch {
+                factLabel.text = "Something went wrong: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    
 
 }
 
