@@ -70,21 +70,51 @@ class ViewController: UIViewController {
     
     //api networking
     func fetchCatFact() async throws -> CatFact{
-        
+        //get url
         let apiURL = URL(string: "https://catfact.ninja/fact")!
+        //fetches the data from url
         let (data, _) = try await URLSession.shared.data(from: apiURL)
+        //decode raw data into swift
         let catFact = try JSONDecoder().decode(CatFact.self, from: data)
         return catFact
-        
+    }
+    
+    func fetchCatImage() async throws -> UIImage {
+
+        // "?t=..." adds the current time to the URL so every request looks "new". Without it, iOS may reuse the cached (saved) photo and you'd see the same cat every tap.
+        let url = URL(string: "https://cataas.com/cat?t=\(Date().timeIntervalSince1970)")!
+
+        let (data, _) = try await URLSession.shared.data(from: url)
+
+        // Turn the bytes into a picture
+        // UIImage(data:) returns an optional (the bytes might not be a valid image), so "guard let" means: "if it worked, continue; if not, stop and throw an error".
+        guard let image = UIImage(data: data) else {
+            throw URLError(.cannotDecodeContentData)
+        }
+
+        return image
     }
     
     //when button is tapped
     func getFactTapped(){
         Task {
+            //show the spinner spinning
+            spinner.startAnimating()
+            //show grey button so user can't tap it again when loading
+            button.isEnabled = false
+            // defer means "run this block when we leave this scope" Without it, an error would leave the spinner spinning forever.
+            defer {
+                spinner.stopAnimating()    // hide the spinner
+                button.isEnabled = true    // let the user tap again
+            }
+            
             // "do/catch" = try this; if anything throws an error, jump to "catch".
             do {
                 let catFact = try await fetchCatFact()   // wait for the fact
                 factLabel.text = catFact.fact            // show it on screen
+                
+                let catImage = try await fetchCatImage()
+                catImageView.image = catImage
             } catch {
                 factLabel.text = "Something went wrong: \(error.localizedDescription)"
             }
